@@ -20,10 +20,7 @@ from forms import SnippetForm
 from models import Snippet, SnippetVersion, SnippetComment
 from accounts.models import UserProfile, UserFollow
 
-from snippify.utils import build_context, JsonResponse
-
-#Other
-
+from utils import build_context, JsonResponse
 
 @login_required
 def index(request):
@@ -31,16 +28,9 @@ def index(request):
     snippets = Snippet.objects.filter(author=request.user)
     return render_to_response('snippets/index.html', {'snippets': snippets},
                             context_instance=build_context(request))
-@login_required
-def delete(request, id=None):
-    snippet = get_object_or_404(Snippet, pk=id)
-    if snippet.author_id == request.user.id or request.user.is_staff:
-        snippet.delete()
-        request.session['flash'] = ['#'+str(id)+' deleted succesfully', 'success']
-        return HttpResponseRedirect('/accounts/profile/')
-    else:
-        request.session['flash'] = ['Access denied', 'error']
+
 def read(request, id=None):
+    """ View some snippet, a snippet can be private so check that too """
     snippet = get_object_or_404(Snippet, pk=id)
     if SnippetVersion.objects.filter(snippet = snippet).all():
         versions = True
@@ -53,9 +43,7 @@ def read(request, id=None):
         comments  = None
 
     snippet.highlight_body = snippet.highlight(snippet.body, get_lexer_by_name(snippet.lexer))
-    return render_to_response(
-        'snippets/read.html',
-        {
+    return render_to_response('snippets/read.html', {
             'snippet': snippet,
             'comments': comments,
             'versions': versions,
@@ -63,6 +51,17 @@ def read(request, id=None):
         },
         context_instance=build_context(request)
     )
+
+@login_required
+def delete(request, id=None):
+    snippet = get_object_or_404(Snippet, pk=id)
+    if snippet.author_id == request.user.id or request.user.is_staff:
+        snippet.delete()
+        request.session['flash'] = ['#'+str(id)+' deleted succesfully', 'success']
+        return HttpResponseRedirect('/accounts/profile/')
+    else:
+        request.session['flash'] = ['Access denied', 'error']
+
 def history(request, id = None):
     """ Show history list or display diff between two versions """
     snippet = get_object_or_404(Snippet, pk=id)
@@ -73,8 +72,10 @@ def history(request, id = None):
         else:
             ver = get_object_or_404(SnippetVersion, snippet = snippet, version=version)
             body = snippet.highlight(ver.body, get_lexer_by_name(snippet.lexer))
-        return render_to_response('snippets/version.html', {'snippet': snippet, 'version': version, 'body': body, 'lines': range(1, body.count('\n'))},
-                                context_instance=build_context(request))
+        return render_to_response('snippets/version.html',
+            {'snippet': snippet, 'version': version, 'body': body, 'lines': range(1, body.count('\n'))},
+            context_instance=build_context(request))
+
     elif request.GET.get('v1') and request.GET.get('v2'):
         version1 = int(request.GET['v1'])
         version2 = int(request.GET['v2'])
@@ -112,8 +113,10 @@ def history(request, id = None):
         snippet_versions = SnippetVersion.objects.filter(snippet = snippet).all()
         return render_to_response('snippets/history_index.html', {'snippet': snippet, 'snippet_versions': snippet_versions},
                                 context_instance=build_context(request))
+
 @login_required
 def update(request, id=None):
+    """ XXX: Update and create views should be unified into one """
     snippet = get_object_or_404(Snippet, pk=id)
     if request.user.id == snippet.author_id:
         if request.method == 'POST': # If the form has been submitted...
@@ -162,8 +165,10 @@ def update(request, id=None):
     else:
         request.session['flash'] = ['Access denied', 'error'];
         return HttpResponseRedirect('/accounts/profile/') # Redirect after POST
+
 @login_required
 def create(request):
+    """ XXX: Update and create views should be unified into one """
     data = {}
     if request.method == 'POST':
         data['form'] = SnippetForm(request.POST) # A form bound to the POST data
@@ -180,7 +185,11 @@ def create(request):
                     formData.lexer = u'text'
             if 'preview' in request.POST:
                 data['title'] = formData.title;
-                data['preview_body'] = highlight(formData.body, get_lexer_by_name(formData.lexer), HtmlFormatter(cssclass = 'source'))
+                data['preview_body'] = highlight(
+                    formData.body,
+                    get_lexer_by_name(formData.lexer),
+                    HtmlFormatter(cssclass = 'source')
+                )
                 data['lines'] = range(1, formData.body.count('\n') + 2)
                 return render_to_response('snippets/process.html', data, context_instance=build_context(request))
             else:#save - notify followers this user and have the option on
@@ -210,10 +219,15 @@ def create(request):
                return render_to_response('snippets/process.html', data, context_instance=build_context(request))
     else:
         data['form'] = SnippetForm() # An unbound form
-    return render_to_response('snippets/process.html', data, context_instance=build_context(request))
+    return render_to_response('snippets/process.html', data,
+        context_instance=build_context(request))
 
 def comment(request, id = None):
-    """ Create a new comment. Django comments framework sucks ass! """
+    """
+    Create a new comment.
+    Django comments framework (v1.2) doesn't have a simple ajax api.
+    Only staff users can delete comments. Also only logged users can post.
+    """
     if request.GET.get('delete'):
         if request.user.is_staff:
             get_object_or_404(SnippetComment, pk=id).delete()
@@ -250,14 +264,18 @@ def comment(request, id = None):
         else:
             data['error'] = 'You must login to post a comment'
         return JsonResponse(data)
+
 def search(request):
+    """ Fulltext search view. Uses whoosh """
     data = {}
     data['query'] = request.GET.get('q', '')
     paginator = Paginator(Snippet.indexer.search(data['query']).prefetch(), 25)
     data['results'] = paginator.page(int(request.GET.get('page', 1)))
-    return render_to_response('snippets/search.html', data, context_instance=build_context(request))
+    return render_to_response('snippets/search.html', data,
+        context_instance=build_context(request))
 
 def suggest(request):
+    """ Used with Firefox search plugin to suggest search results """
     data = []
     query = request.GET.get('q', '')
     results = Snippet.indexer.search(query).prefetch()
@@ -267,7 +285,9 @@ def suggest(request):
         results_list.append(result.instance.title)
     data.append(results_list)
     return HttpResponse(json.dumps(data))
+
 def download(request, id=None):
+    """ Download snippet setting a file extension by guessing it's mimetype"""
     snippet = get_object_or_404(Snippet, pk=id)
     try:
         file_extention = get_lexer_by_name(snippet.lexer).filenames[0].split('*')[1]
@@ -281,35 +301,40 @@ def download(request, id=None):
     response['Content-Disposition'] = 'attachment; filename="' + filename + '"'
     return response
 
-#Tags
+# Tag views
 def tag_index(request):
-	tags = Tag.objects.all()
-	return render_to_response('tags/index.html', {}, context_instance=build_context(request))
+    """ View all tags into a tag cloud """
+    tags = Tag.objects.all()
+    return render_to_response('tags/index.html', {},
+        context_instance=build_context(request))
 
 def tag_view(request, tag = None):
-	try:
-		tag_object = Tag.objects.get(name=tag)
-		snippets = TaggedItem.objects.get_by_model(Snippet, tag_object)
-	except:
-		snippets = None
-	return render_to_response('tags/view.html', {'tag': tag, 'snippets': snippets}, context_instance=build_context(request))
-def tag_user(request, tag = None, username = None):
-	try:
-		tag_object = Tag.objects.get(name=tag)
-		snippets = TaggedItem.objects.get_by_model(Snippet, tag_object)
-	except:
-		snippets = None
-	return render_to_response('tags/view.html', {'tag': tag, 'snippets': snippets}, context_instance=build_context(request))
+    """ View all snippets of a specific tag """
+    try:
+        tag_object = Tag.objects.get(name=tag)
+        snippets = TaggedItem.objects.get_by_model(Snippet, tag_object)
+    except:
+        snippets = None
+    return render_to_response('tags/view.html',
+        {'tag': tag, 'snippets': snippets},
+        context_instance=build_context(request))
 
-# First page
-def site_index(request, extra_context=None):
-	"""
-	This is the first page
-	Need to return latest 10 snippets
-	@todo: tag cloud
-	"""
-	snippets = Snippet.objects.all()[0:5]
-	if snippets == None:
-		snippets = []
-	return render_to_response('pages/index.html', {'snippets': snippets, 'home_page': True },
-							context_instance=build_context(request, extra_context=extra_context))
+def tag_user(request, tag = None, username = None):
+    """ View all snippets of a tag of a user """
+    try:
+        tag_object = Tag.objects.get(name=tag)
+        snippets = TaggedItem.objects.get_by_model(Snippet, tag_object)
+    except:
+        snippets = None
+    return render_to_response('tags/view.html',
+        {'tag': tag, 'snippets': snippets},
+        context_instance=build_context(request))
+
+def page_index(request, extra_context=None):
+    """ First page of the app. Shows latest 10 snippets. """
+    snippets = Snippet.objects.all()[0:5]
+    if snippets == None:
+        snippets = []
+    return render_to_response('pages/index.html',
+        {'snippets': snippets, 'home_page': True },
+        context_instance=build_context(request, extra_context=extra_context))

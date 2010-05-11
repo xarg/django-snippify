@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django.db import models
 from django.contrib.auth.models import User
 
@@ -17,12 +19,6 @@ ADDED_VIA = (
 	('unknown', 'Unknown'),
 )
 
-# Search
-from djapian import space, Indexer
-
-#Other
-from datetime import datetime
-
 def _lexer_names():
 	ret = []
 	for lexer in LEXERS.itervalues():
@@ -31,12 +27,7 @@ def _lexer_names():
 	return tuple(ret)
 
 class Snippet(models.Model):
-	"""
-		A snippet has one directory and many tags
-		@todo: comments
-		@todo: versions
-		@todo: pygments + autodiscovery
-	"""
+	""" """
 	author = models.ForeignKey(User)
 	title = models.CharField(max_length = 200, help_text = 'Ex. Django URL middleware')
 	description = models.TextField(blank = True, help_text = 'Short description of your snippet')
@@ -67,46 +58,55 @@ class Snippet(models.Model):
 	)
 	tags = TagField()
 	via = models.CharField(max_length = 50, default = 'web', choices = ADDED_VIA) # Used to provide some kind of stats
-	def __unicode__(self): return self.title
+
+	def __unicode__(self):
+		return self.title
 
 	def highlight(self, body = '', lexer = None):
 		""" Parse a piece of text and hightlight it as html"""
 		if not lexer:
 			lexer = get_lexer_by_name(u'text')
 		return highlight (body, lexer, HtmlFormatter(cssclass = 'source') )
+
 	def get_absolute_url(self):
 		return '/' + str(self.pk)
+
 	class Meta:
 		ordering = ['-created_date']
+
 class SnippetComment(models.Model):
-	""" Django comment framework sucks! """
+	""" """
 	snippet = models.ForeignKey(Snippet)
 	user = models.ForeignKey(User)
 	body = models.TextField()
 	created_date = models.DateTimeField(default=datetime.now())
+
 	class Meta:
 		ordering = ['created_date']
+
 class SnippetVersion(models.Model):
 	""" History for snippets! """
 	snippet = models.ForeignKey(Snippet)
 	version = models.IntegerField(default = 1)
 	body = models.TextField()
 	created_date = models.DateTimeField(default=datetime.now())
+
 	class Meta:
 		ordering = ['-version']
-class SnippetIndexer(Indexer):
-	""" Used by djapian """
-	fields = ['title', 'description', 'body', 'tags', 'lexer']
-	tags = [
-		('author', 'author'),
-		('pk', 'pk'),
-		('created_date', 'created_date')
-	]
-class TagIndexer(Indexer):
-	""" Used by djapian """
-	fields = ['name']
-	tags = [
-		('name', 'name')
-	]
-space.add_index(Snippet, SnippetIndexer, attach_as='indexer')
-space.add_index(Tag, TagIndexer, attach_as='indexer')
+
+#class SnippetIndexer(Indexer):
+#	""" Used by djapian """
+#	fields = ['title', 'description', 'body', 'tags', 'lexer']
+#	tags = [
+#		('author', 'author'),
+#		('pk', 'pk'),
+#		('created_date', 'created_date')
+#	]
+#class TagIndexer(Indexer):
+#	""" Used by djapian """
+#	fields = ['name']
+#	tags = [
+#		('name', 'name')
+#	]
+#space.add_index(Snippet, SnippetIndexer, attach_as='indexer')
+#space.add_index(Tag, TagIndexer, attach_as='indexer')
