@@ -1,5 +1,5 @@
 from django import forms
-from snippify.snippets.models import Snippet
+from models import Snippet
 
 class SnippetForm(forms.ModelForm):
     body = forms.Textarea(attrs={'class':'special', 'wrap': 'off'})

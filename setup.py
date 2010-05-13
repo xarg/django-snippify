@@ -16,10 +16,10 @@ for dir in package_data_dirs:
             for pattern in ('*.py', '*.pyc', '*~', '.*', '*.bak', '*.swp*'):
                 if fnmatch.fnmatchcase(filename, pattern):
                     failed = True
+                    break
             if failed:
                 continue
             package_data_files.append(os.path.join(*filepath.split(os.sep)[1:]))
-
 setup(
     name='django-timetrack',
     version='0.1',

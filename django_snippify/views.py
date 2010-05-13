@@ -1,6 +1,5 @@
-import difflib
 import json
-
+import difflib
 from pygments import highlight
 from pygments.formatters import HtmlFormatter
 from pygments.lexers import guess_lexer, get_lexer_by_name, LEXERS
@@ -9,17 +8,14 @@ from pygments.util import ClassNotFound
 from django.conf import settings
 from django.core.paginator import Paginator, EmptyPage
 from django.core.urlresolvers import reverse
-
-from django.contrib.auth.decorators import login_required # User to verify if user is authenticated
-
-from django.shortcuts import get_object_or_404, render_to_response
 from django.http import HttpResponseRedirect, HttpResponse, Http404
+from django.shortcuts import get_object_or_404, render_to_response
 from django.template.loader import render_to_string
+from django.contrib.auth.decorators import login_required
 
 from forms import SnippetForm
 from models import Snippet, SnippetVersion, SnippetComment
 from accounts.models import UserProfile, UserFollow
-
 from utils import build_context, JsonResponse
 
 @login_required
@@ -330,11 +326,11 @@ def tag_user(request, tag = None, username = None):
         {'tag': tag, 'snippets': snippets},
         context_instance=build_context(request))
 
-def page_index(request, extra_context=None):
+def page_index(request):
     """ First page of the app. Shows latest 10 snippets. """
     snippets = Snippet.objects.all()[0:5]
     if snippets == None:
         snippets = []
     return render_to_response('pages/index.html',
         {'snippets': snippets, 'home_page': True },
-        context_instance=build_context(request, extra_context=extra_context))
+        context_instance=build_context(request))
