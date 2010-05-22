@@ -1,10 +1,9 @@
 from django.conf.urls.defaults import *
-
 from feeds import LatestSnippets, LatestTag, LatestUser
 feeds = {
-	'latest': LatestSnippets,
-	'tag': LatestTag,
-	'user': LatestUser,
+    'latest': LatestSnippets,
+    'tag': LatestTag,
+    'user': LatestUser,
 }
 
 #Django piston - doesn't work with CSRF
@@ -13,24 +12,25 @@ feeds = {
 #snippet_handler = Resource(SnippetHandler)
 
 import views
-
 urlpatterns = patterns('',
-	url(r'^$', views.page_index, name="page_index"),
-	url(r'^snippets/?$', views.index, name="snippet_index"),
-	url(r'^(\d+)-?.*/?$', views.read, name="snippet_read"),
-	url(r'^create/?$', views.create, name="snippet_create"),
-	url(r'^update/(\d+)/?$', views.update, name="snippet_update"),
-	url(r'^delete/(\d+)/?$', views.delete, name="snippet_delete"),
-	url(r'^download/(\d+)/?$', views.download, name="snippet_download"),
-	url(r'^history/(\d+)/?$', views.history, name="snippet_history"),
-	url(r'^comment/(\d+)/?$', views.comment, name="snippet_comment"),
-	#(r'^search-plugin.xml$', 'django.views.generic.simple.direct_to_template', {'template': 'snippets/search-plugin.xml', 'extra_context': {'SITE': ''}}),
-	url(r'^search/?$', views.search, name="snippet_search"),
-	url(r'^suggest/?$', views.suggest, name="snippet_suggest"),
+    url(r'^$', views.page_index, name="snippify_index"),
+    url(r'^snippets/?$', views.index, name="snippify_snippets"),
+    url(r'^(\d+)-?.*/?$', views.read, name="snippify_read"),
+    url(r'^create/?$', views.create, name="snippify_create"),
+    url(r'^update/(\d+)/?$', views.update, name="snippify_update"),
+    url(r'^delete/(\d+)/?$', views.delete, name="snippify_delete"),
+    url(r'^download/(\d+)/?$', views.download, name="snippify_download"),
+    url(r'^history/(\d+)/?$', views.history, name="snippify_history"),
+    url(r'^comment/(\d+)/?$', views.comment, name="snippify_comment"),
+    url(r'^search/?$', views.search, name="snippify_search"),
+    url(r'^suggest/?$', views.suggest, name="snippify_suggest"),
+        # Tags
+    url(r'^tags/?$', views.tag_index, name="snippify_tag_index"),
+    url(r'^tag/(?P<tag>[^/]+)/?$', views.tag_view, name="snippify_tag_read"),
+    url(r'^tag/(?P<tag>[^/]+)/(?P<username>[^/]+)/?$', views.tag_user, name="snippify_tag_user"),
 
-	url(r'^tag/(?P<tag>[^/]+)/?$', views.tag_view, name="tag_view"),
-	url(r'^tag/(?P<tag>[^/]+)/(?P<username>[^/]+)/?$', views.tag_user, name="tag_user"),
-	url(r'^tags/?$', views.tag_index, name="tag_index"),
-	#(r'$', 'snippify.api.views.create'),
-	url(r'^feeds/(?P<url>.*)/?$', 'django.contrib.syndication.views.feed', {'feed_dict': feeds}, name="snippify_feeds"),
+    url(r'^feeds/(?P<url>.*)/?$', 'django.contrib.syndication.views.feed',
+        {'feed_dict': feeds}, name="snippify_feeds"),
+    url(r'^search-plugin.xml$', 'django.views.generic.simple.direct_to_template',
+        {'template': '/search-plugin.xml', 'extra_context': None}, name="snippify_search_plugin"),
 )

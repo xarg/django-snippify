@@ -1,5 +1,6 @@
 var previewed = false;
 var commentBusy = false;
+
 $(document).ready(function() {
 	$('.preview-comment').click(function(e){
 		e.preventDefault();

@@ -2,39 +2,39 @@
 {% load tagging_tags %}
 {% block title%}{% endblock%}
 {% block extra_scripts %}
-<script type="text/javascript" src="{{MEDIA_URL}}js/swfobject.js"></script>
-<script type="text/javascript">
-	{% tag_cloud_for_model django_snippify.snippet as cloud with steps=2 min_count=1 distribution=log %}
-	tagcloud = "%3Ctags%3E"
-	{% for tag in cloud %}
-	tagcloud +='%3Ca href="http://snippify.me/tag/{{tag}}" class="tag-item" style="font-size: {{tag.font_size|add:"10"}}em"%3E{{tag}}%3C%2Fa%3E'
-	{% endfor %}
-	tagcloud +="%3C%2Ftags%3E"
-	params = {
-		"wmode": "transparent",
-		"quality": "high",
-		"bgcolor": "#000000",
-		"name": "tagcloudflash",
-		"id": "tagcloudflash",
-	}
-	flashvars = {
-		"tcolor": "0xd1e8ff",
-		"tcolor2": "0xd1e8ff",
-		"hicolor": "0xffffff",
-		"tspeed": "100",
-		"mode":"tags",
-		"tagcloud":tagcloud,
-	}
-	attributes = {}
-	var badBrowser = (/MSIE ((5\.5)|6|7|8)/.test(navigator.userAgent) && navigator.platform == "Win32");
-		if (badBrowser) {
-			// $('#flashcloud').html(" ");
-		} else {
-			swfobject.embedSWF("{{MEDIA_URL}}images/tagcloud.swf", "flashcloud", "303", "303", "9.0.0","expressInstall.swf", flashvars, params, attributes);
-		}
+<script src="{{MEDIA_URL}}js/swfobject.js"></script>
+<script>
+{% tag_cloud_for_model django_snippify.snippet as cloud with steps=2 min_count=1 distribution=log %}
+tagcloud = "%3Ctags%3E"
+{% for tag in cloud %}
+tagcloud +='%3Ca href="{% url snippify_tag_read tag %}" class="tag-item" style="font-size: {{tag.font_size|add:"10"}}em"%3E{{tag}}%3C%2Fa%3E'
+{% endfor %}
+tagcloud +="%3C%2Ftags%3E"
+
+params = {
+	"wmode": "transparent",
+	"quality": "high",
+	"bgcolor": "#000000",
+	"name": "tagcloudflash",
+	"id": "tagcloudflash",
+}
+
+flashvars = {
+	"tcolor": "0xd1e8ff",
+	"tcolor2": "0xd1e8ff",
+	"hicolor": "0xffffff",
+	"tspeed": "100",
+	"mode":"tags",
+	"tagcloud":tagcloud,
+}
+attributes = {}
+var badBrowser = (/MSIE ((5\.5)|6|7|8)/.test(navigator.userAgent) && navigator.platform == "Win32");
+if (badBrowser) {
+	// $('#flashcloud').html(" ");
+} else {
+	swfobject.embedSWF("{{MEDIA_URL}}images/tagcloud.swf", "flashcloud", "303", "303", "9.0.0","expressInstall.swf", flashvars, params, attributes);
+}
 </script>
-
-
 {% endblock %}
 {% block content %}
 
@@ -53,10 +53,10 @@ Share. Share the snippet with your teammates!
 		<div class="boxed clearfix">
 			<h2>Use snippify.me in</h2>
 				<div class="plugins-logos">
-					<a href="/plugins/eclipse/" title="Eclipse"><img src="{{MEDIA_URL}}images/eclipse.png" alt="Eclipse" /></a>
-					<a href="/plugins/netbeans/" title="Netbeans"><img src="{{MEDIA_URL}}images/netbeans.png" alt="Netbeans" /></a>
-					<a href="/plugins/komodo/" title="Komodo"><img src="{{MEDIA_URL}}images/komodo.png" alt="Komodo" /></a>
-					<a href="/plugins/firefox/" title="Firefox 3"><img src="{{MEDIA_URL}}images/firefox3.png" alt="Firefox 3" /></a>
+					<a href="http://snippify.me/plugins/eclipse/" title="Eclipse"><img src="{{MEDIA_URL}}images/eclipse.png" alt="Eclipse" /></a>
+					<a href="http://snippify.me/plugins/netbeans/" title="Netbeans"><img src="{{MEDIA_URL}}images/netbeans.png" alt="Netbeans" /></a>
+					<a href="http://snippify.me/plugins/komodo/" title="Komodo"><img src="{{MEDIA_URL}}images/komodo.png" alt="Komodo" /></a>
+					<a href="http://snippify.me/plugins/firefox/" title="Firefox 3"><img src="{{MEDIA_URL}}images/firefox3.png" alt="Firefox 3" /></a>
 				</div>
 		</div>
 	</div>
@@ -74,11 +74,12 @@ Share. Share the snippet with your teammates!
 					<div class="tag-cloud">
 					{% tag_cloud_for_model django_snippify.snippet as cloud with steps=2 min_count=1 distribution=log %}
 					{% for tag in cloud %}
-						<a href="/tag/{{tag}}" class="tag-item" style="font-size: {{tag.font_size}}em">{{tag}}</a>
+						<a href="{% url snippify_tag_read tag %}" class="tag-item"
+						   style="font-size: {{tag.font_size}}em">{{tag}}</a>
 					{% endfor %}
 					</div>
 				<![endif]-->
-				<div id="flashcloud"></div>
+				<div id="flashcloud"><!-- Flashcould placeholder --></div>
 			</div>
 		</div>
 	</div>

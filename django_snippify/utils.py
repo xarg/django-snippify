@@ -9,7 +9,6 @@ def build_context(request, extra_context = {}):
         extra_context['flash']= request.session['flash']
         del request.session['flash']
     context = RequestContext(request)
-    import pdb; pdb.set_trace()
     for key, value in extra_context.items():
         context[key] =  value() if callable(value) else value
     return context

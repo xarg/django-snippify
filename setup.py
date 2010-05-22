@@ -21,9 +21,12 @@ for dir in package_data_dirs:
                 continue
             package_data_files.append(os.path.join(*filepath.split(os.sep)[1:]))
 setup(
-    name='django-timetrack',
+    name='django-snippify',
     version='0.1',
-    description='Django app that collets snippets, allows comments and following users',
+    description='Django app for collecting snippets',
+    long_description="""Django app for colleting tagged, versioned, commented,
+    RESTed and pygmented snippets. Support for major IDEs (with plugins)
+    and many other features""",
     author='Alexandru Plugaru',
     author_email='alexandru.plugaru@gmail.com',
     url='http://github.com/humanfromearth/django-snippify',
@@ -42,7 +45,9 @@ setup(
     package_data={'django_snippify': package_data_dirs},
     requires=[
         'django (>=1.2)',
-        'piston',
-        'django_whoosh',
+        'django-piston',
+        'django-whoosh',
+        'django-tagging',
+        'pygments',
     ],
 )

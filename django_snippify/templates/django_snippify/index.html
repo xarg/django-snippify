@@ -4,10 +4,10 @@
 {% if snippets %}
 <ul>
 {% for snippet in snippets %}
-<li><a href="/{{snippet.pk}}">{{snippet.title}}</a> <a href="/delete/{{snippet.pk}}">Delete</a></li> 
+<li><a href="{% url snippify_read snippet.pk %}">{{snippet.title}}</a> <a href="{% url snippify_delete snippet.pk %}">Delete</a></li>
 {% endfor%}
 </ul>
 {% else %}
-<div class="no-records">You have no snippets! <a href="/create">Create one</a>.</div>
+<div class="no-records">You have no snippets! <a href="{% url snippify_create %}">Create one</a>.</div>
 {% endif %}
 {% endblock %}
