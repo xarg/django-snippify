@@ -1,17 +1,27 @@
 from django.db import models
 from django.contrib.auth.models import User
+from django_snippify.utils import extend
+
+#Note: I don't like this hack.. investigate another way to do this
+try:
+	from settings import AUTH_PROFILE_MODULE
+	if 'django_snippify' in AUTH_PROFILE_MODULE:#UserProfile is the AUTH_PROFILE_MODULE
+		CLASS_TO_EXTEND = models.Model
+	else:
+		CLASS_TO_EXTEND = __import__(AUTH_PROFILE_MODULE)
+except ImportError:
+	import sys
+	print "AUTH_PROFILE_MODULE must be set in settings"
+	sys.exit(2)
 
 PRIVACY_CHOICES = (
     ('public', 'Public'),
     ('private', 'Private')
 )
 
-class UserProfile(models.Model):
-	""" This model is required
-	TODO:
-	Find a way to extend an existing a different AUTH_PROFILE_MODULE
-	and demonstrante a way (example) to extend this profile module
-	"""
+@extend(CLASS_TO_EXTEND)
+class UserProfile:
+	""" This model is required """
 
 	user = models.ForeignKey(User, unique=True)
 

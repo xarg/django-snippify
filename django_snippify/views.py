@@ -18,11 +18,20 @@ from models import Snippet, SnippetVersion, SnippetComment
 from accounts.models import UserProfile, UserFollow
 from utils import build_context, JsonResponse
 
+def page_index(request):
+    """ First page of the app. Shows latest 10 snippets. """
+    snippets = Snippet.objects.all()[0:5]
+    if snippets == None:
+        snippets = []
+    return render_to_response('pages/index.html',
+        {'snippets': snippets, 'home_page': True },
+        context_instance=build_context(request))
+
 @login_required
 def index(request):
     """ My snippets """
     snippets = Snippet.objects.filter(author=request.user)
-    return render_to_response('snippets/index.html', {'snippets': snippets},
+    return render_to_response('django_snippify/index.html', {'snippets': snippets},
                             context_instance=build_context(request))
 
 def read(request, id=None):
@@ -39,7 +48,7 @@ def read(request, id=None):
         comments  = None
 
     snippet.highlight_body = snippet.highlight(snippet.body, get_lexer_by_name(snippet.lexer))
-    return render_to_response('snippets/read.html', {
+    return render_to_response('django_snippify/read.html', {
             'snippet': snippet,
             'comments': comments,
             'versions': versions,
@@ -48,12 +57,104 @@ def read(request, id=None):
         context_instance=build_context(request)
     )
 
+def _process(request, id=None):
+    """ Create/Update snippet """
+
+    if id is not None:#Update
+        snippet = get_object_or_404(Snippet, pk=id)
+        form = SnippetForm(instance=snippet)
+
+        if request.user.id == snippet.author_id:
+            request.session['flash'] = ['Access denied', 'error'];
+            return HttpResponseRedirect('/accounts/profile/')
+
+        if 'delete' in request.POST:
+            snippet.delete()
+            request.session['flash'] = ['#' + str(formData.pk) +' deleted successfuly', 'sucess']
+            return HttpResponseRedirect('/accounts/profile/')
+
+    else:#Create
+        snippet = None
+        form = SnippetForm()
+
+    if request.method == 'POST':
+        form = SnippetForm(request.POST)#Bounding form to the POST data
+        if not form.is_valid(): # redirect to form with errors
+            return render_to_response('process.html', {'form': form }, context_instance=build_context(request))
+
+        formData = form.save(commit = False)
+        formData.pk = snippet.pk
+
+        if 'preview' in request.POST:
+            data = {}
+            data['title'] = formData.title;
+            data['preview_body'] = highlight(formData.body, get_lexer_by_name(formData.lexer), HtmlFormatter(cssclass = 'source'))
+            data['lines'] = range(1, formData.body.count('\n') + 2)
+            data['form'] = form
+            data['snippet'] = formData
+            return render_to_response('djnago_snippify/process.html', data, context_instance=build_context(request))
+
+        else:#save
+            formData.author = request.user
+            if not formData.lexer:
+                try:
+                    lexer = guess_lexer(formData.body)
+                    for lex in LEXERS.itervalues():
+                        if lexer.name == lex[1]:
+                            formData.lexer = lex[2][0].lower()
+                except ClassNotFound:
+                    formData.lexer = 'text'
+            formData.save()
+            if snippet and snippet.body != formData.body:
+                try:
+                    last_version = SnippetVersion.objects.order_by('-version').filter(snippet = snippet).all()[0]
+                    new_version = SnippetVersion(snippet = snippet, version = last_version.version + 1, body = snippet.body)
+                    new_version.save()
+                except:
+                    create_version = SnippetVersion(snippet = snippet, version = 1, body = snippet.body)
+                    create_version.save()
+            request.session['flash'] = ['#%s %s successfuly' % (formData.pk, 'update' if id is not None else 'created'), 'sucess'];
+            return HttpResponseRedirect('/accounts/profile/')
+    else:
+        return render_to_response('django_snippify/process.html', {'form': form, 'snippet': snippet }, context_instance=build_context(request))
+
+@login_required
+def update(request, id=None):
+    """ Update snippet """
+    return _process(request, id)
+
+@login_required
+def create(request):
+    """ Create snippet"""
+    return _process(request)
+
+#This here should go to signal code
+#
+#try:
+#    followers = UserFollow.objects.select_related().filter(followed_user=request.user).all()
+#except:
+#    followers = None
+#if followers: # this is very inneficient - find some other way
+#    for follower in followers:
+#        profile = follower.user.get_profile();
+#        if profile.followed_user_created: #User wants to recieve a notification
+#            queue = EmailQueue(
+#                mail_to=follower.user.email,
+#                mail_subject="Followed user created a new snippet",
+#                mail_body=render_to_string('emails/followed_user_created.txt', {
+#                    'user': follower.user,
+#                    'username': request.user.username,
+#                    'SITE': request.META['HTTP_HOST']}
+#                )
+#            )
+#            queue.save()
+
 @login_required
 def delete(request, id=None):
     snippet = get_object_or_404(Snippet, pk=id)
     if snippet.author_id == request.user.id or request.user.is_staff:
         snippet.delete()
-        request.session['flash'] = ['#'+str(id)+' deleted succesfully', 'success']
+        request.session['flash'] = ['#%s deleted succesfully' % id, 'success']
         return HttpResponseRedirect('/accounts/profile/')
     else:
         request.session['flash'] = ['Access denied', 'error']
@@ -68,7 +169,7 @@ def history(request, id = None):
         else:
             ver = get_object_or_404(SnippetVersion, snippet = snippet, version=version)
             body = snippet.highlight(ver.body, get_lexer_by_name(snippet.lexer))
-        return render_to_response('snippets/version.html',
+        return render_to_response('django_snippify/version.html',
             {'snippet': snippet, 'version': version, 'body': body, 'lines': range(1, body.count('\n'))},
             context_instance=build_context(request))
 
@@ -97,7 +198,7 @@ def history(request, id = None):
         for line in difflib.unified_diff(fromlines, tolines, fromfile=version1_label, tofile=version2_label):
             diffbody = diffbody + str(line)
         diffbody = snippet.highlight(diffbody, get_lexer_by_name('diff'))
-        return render_to_response('snippets/diff.html', {
+        return render_to_response('django_snippify/diff.html', {
             'snippet': snippet,
             'version1': version1,
             'version2': version2,
@@ -107,116 +208,8 @@ def history(request, id = None):
         context_instance=build_context(request))
     else:
         snippet_versions = SnippetVersion.objects.filter(snippet = snippet).all()
-        return render_to_response('snippets/history_index.html', {'snippet': snippet, 'snippet_versions': snippet_versions},
+        return render_to_response('django_snippify/history_index.html', {'snippet': snippet, 'snippet_versions': snippet_versions},
                                 context_instance=build_context(request))
-
-@login_required
-def update(request, id=None):
-    """ XXX: Update and create views should be unified into one """
-    snippet = get_object_or_404(Snippet, pk=id)
-    if request.user.id == snippet.author_id:
-        if request.method == 'POST': # If the form has been submitted...
-            form = SnippetForm(request.POST) # A form bound to the POST data
-            if form.is_valid():
-                formData = form.save(commit = False)
-                formData.pk = snippet.pk
-                if 'delete' in request.POST:
-                    snippet.delete()
-                    request.session['flash'] = ['#' + str(formData.pk) +' deleted successfuly', 'sucess']
-                    return HttpResponseRedirect('/accounts/profile/')
-                if 'preview' in request.POST:
-                    data = {}
-                    data['title'] = formData.title;
-                    data['preview_body'] = highlight(formData.body, get_lexer_by_name(formData.lexer), HtmlFormatter(cssclass = 'source'))
-                    data['lines'] = range(1, formData.body.count('\n') + 2)
-                    data['form'] = form
-                    data['snippet'] = snippet
-                    return render_to_response('snippets/process.html', data, context_instance=build_context(request))
-                else: #save
-                    formData.author = request.user
-                    if not formData.lexer:
-                        try:
-                            lexer = guess_lexer(formData.body)
-                            for lex in LEXERS.itervalues():
-                                if lexer.name == lex[1]:
-                                    formData.lexer = lex[2][0].lower()
-                        except ClassNotFound:
-                            formData.lexer = 'text'
-                    formData.save()
-                    if snippet.body != formData.body:
-                        try:
-                            last_version = SnippetVersion.objects.order_by('-version').filter(snippet = snippet).all()[0]
-                            new_version = SnippetVersion(snippet = snippet, version = last_version.version + 1, body = snippet.body)
-                            new_version.save()
-                        except:
-                            create_version = SnippetVersion(snippet = snippet, version = 1, body = snippet.body)
-                            create_version.save()
-                    request.session['flash'] = ['#' + str(formData.pk) +' updated successfuly', 'sucess'];
-                    return HttpResponseRedirect('/accounts/profile/') # Redirect after POST
-            else:
-                   return render_to_response('snippets/process.html', {'form': form }, context_instance=build_context(request))
-        else:
-            form = SnippetForm(instance=snippet)
-        return render_to_response('snippets/process.html', {'form': form, 'snippet': snippet }, context_instance=build_context(request))
-    else:
-        request.session['flash'] = ['Access denied', 'error'];
-        return HttpResponseRedirect('/accounts/profile/') # Redirect after POST
-
-@login_required
-def create(request):
-    """ XXX: Update and create views should be unified into one """
-    data = {}
-    if request.method == 'POST':
-        data['form'] = SnippetForm(request.POST) # A form bound to the POST data
-        if data['form'].is_valid():
-            formData = data['form'].save(commit = False)
-            formData.author = request.user
-            if not formData.lexer:
-                try:
-                    lexer = guess_lexer(formData.body)
-                    for lex in LEXERS.itervalues():
-                        if lexer.name == lex[1]:
-                            formData.lexer = lex[2][0].lower()
-                except ClassNotFound:
-                    formData.lexer = u'text'
-            if 'preview' in request.POST:
-                data['title'] = formData.title;
-                data['preview_body'] = highlight(
-                    formData.body,
-                    get_lexer_by_name(formData.lexer),
-                    HtmlFormatter(cssclass = 'source')
-                )
-                data['lines'] = range(1, formData.body.count('\n') + 2)
-                return render_to_response('snippets/process.html', data, context_instance=build_context(request))
-            else:#save - notify followers this user and have the option on
-                formData.body = str(formData.body).replace("\r\n","\n")
-                formData.save()
-                try:
-                    followers = UserFollow.objects.select_related().filter(followed_user=request.user).all()
-                except:
-                    followers = None
-                if followers: # this is very inneficient - find some other way
-                    for follower in followers:
-                        profile = follower.user.get_profile();
-                        if profile.followed_user_created: #User wants to recieve a notification
-                            queue = EmailQueue(
-                                mail_to=follower.user.email,
-                                mail_subject="Followed user created a new snippet",
-                                mail_body=render_to_string('emails/followed_user_created.txt', {
-                                    'user': follower.user,
-                                    'username': request.user.username,
-                                    'SITE': request.META['HTTP_HOST']}
-                                )
-                            )
-                            queue.save()
-                request.session['flash'] = ['#' + str(formData.pk) +' created successfuly', 'success']
-                return HttpResponseRedirect('/accounts/profile/') # Redirect after POST
-        else:
-               return render_to_response('snippets/process.html', data, context_instance=build_context(request))
-    else:
-        data['form'] = SnippetForm() # An unbound form
-    return render_to_response('snippets/process.html', data,
-        context_instance=build_context(request))
 
 def comment(request, id = None):
     """
@@ -267,11 +260,14 @@ def search(request):
     data['query'] = request.GET.get('q', '')
     paginator = Paginator(Snippet.indexer.search(data['query']).prefetch(), 25)
     data['results'] = paginator.page(int(request.GET.get('page', 1)))
-    return render_to_response('snippets/search.html', data,
+    return render_to_response('django_snippify/search.html', data,
         context_instance=build_context(request))
 
 def suggest(request):
-    """ Used with Firefox search plugin to suggest search results """
+    """
+    Used with Firefox search plugin to suggest search results
+    returns json
+    """
     data = []
     query = request.GET.get('q', '')
     results = Snippet.indexer.search(query).prefetch()
@@ -297,7 +293,7 @@ def download(request, id=None):
     response['Content-Disposition'] = 'attachment; filename="' + filename + '"'
     return response
 
-# Tag views
+#Tag views
 def tag_index(request):
     """ View all tags into a tag cloud """
     tags = Tag.objects.all()
@@ -324,13 +320,4 @@ def tag_user(request, tag = None, username = None):
         snippets = None
     return render_to_response('tags/view.html',
         {'tag': tag, 'snippets': snippets},
-        context_instance=build_context(request))
-
-def page_index(request):
-    """ First page of the app. Shows latest 10 snippets. """
-    snippets = Snippet.objects.all()[0:5]
-    if snippets == None:
-        snippets = []
-    return render_to_response('pages/index.html',
-        {'snippets': snippets, 'home_page': True },
         context_instance=build_context(request))

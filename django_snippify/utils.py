@@ -13,6 +13,13 @@ def build_context(request, extra_context = {}):
         context[key] =  value() if callable(value) else value
     return context
 
+def extend(class_to_extend):
+    """ Dinamicaly extend a class via decorator"""
+    def decorator(extending_class):
+        extending_class.__dict__.update(class_to_extend.__dict__)
+        return class_to_extend
+    return decorator
+
 class JsonResponse(HttpResponse):
     """ XXX: Broken """
     def __init__(self, data):

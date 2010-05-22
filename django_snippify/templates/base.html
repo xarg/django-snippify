@@ -2,12 +2,13 @@
 <html>
 <head>
 	<meta charset="utf-8" />
-	<meta http-equiv="Content-Language" content="en-us" />
 	<title>{% block title%}!!!Change the title!!!{% endblock%}{% if home_page %}Code Snippets{% endif %}{% if home_page %} |{% endif %} snippify</title>
 	<link rel="shortcut icon" href="{{MEDIA_URL}}images/favico.ico" />
 	<link rel="search" type="application/opensearchdescription+xml" title="Snippify.me" href="{% url snippify_search_plugin %}" />
 	<link rel="stylesheet" type="text/css" media="all" charset="utf-8" href="{{MEDIA_URL}}css/snippify_base.css"/>
-
+	<!--[if lt IE 9]>
+	<style>article, aside, dialog, figure, footer, header, hgroup, menu, nav, section { display: block; }</style>
+	<![endif]-->
 	{% block head %}{% endblock %}
 </head>
 <body>
