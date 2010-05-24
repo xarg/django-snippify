@@ -63,14 +63,13 @@ def _process(request, id=None):
     if id is not None:#Update
         snippet = get_object_or_404(Snippet, pk=id)
         form = SnippetForm(instance=snippet)
-
-        if request.user.id == snippet.author_id:
+        if request.user.is_staff or request.user.id != snippet.author_id:
             request.session['flash'] = ['Access denied', 'error'];
             return HttpResponseRedirect('/accounts/profile/')
 
         if 'delete' in request.POST:
             snippet.delete()
-            request.session['flash'] = ['#' + str(formData.pk) +' deleted successfuly', 'sucess']
+            request.session['flash'] = ['#%s deleted successfuly' % id, 'sucess']
             return HttpResponseRedirect('/accounts/profile/')
 
     else:#Create
@@ -80,11 +79,10 @@ def _process(request, id=None):
     if request.method == 'POST':
         form = SnippetForm(request.POST)#Bounding form to the POST data
         if not form.is_valid(): # redirect to form with errors
-            return render_to_response('process.html', {'form': form }, context_instance=build_context(request))
+            return render_to_response('django_snippify/process.html', {'form': form }, context_instance=build_context(request))
 
         formData = form.save(commit = False)
-        formData.pk = snippet.pk
-
+        formData.pk = id
         if 'preview' in request.POST:
             data = {}
             data['title'] = formData.title;
@@ -93,7 +91,6 @@ def _process(request, id=None):
             data['form'] = form
             data['snippet'] = formData
             return render_to_response('djnago_snippify/process.html', data, context_instance=build_context(request))
-
         else:#save
             formData.author = request.user
             if not formData.lexer:
@@ -105,7 +102,7 @@ def _process(request, id=None):
                 except ClassNotFound:
                     formData.lexer = 'text'
             formData.save()
-            if snippet and snippet.body != formData.body:
+            if snippet is not None and snippet.body != formData.body:
                 try:
                     last_version = SnippetVersion.objects.order_by('-version').filter(snippet = snippet).all()[0]
                     new_version = SnippetVersion(snippet = snippet, version = last_version.version + 1, body = snippet.body)

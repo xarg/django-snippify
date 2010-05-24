@@ -1,3 +1,5 @@
+import lxml.html
+
 from django.test import TestCase
 from django.core.urlresolvers import reverse
 from django.contrib.auth.models import User
@@ -28,13 +30,34 @@ class SnippetTest(TestCase):
             body="""Snippet body"""
         )
 
-
     """ Snippets tests """
     def test_basic_snippet(self):
         """ Add, update, remove, test if pygments is working"""
+
+        #Add
         response = self.client.get(reverse('snippify_create'))
         self.assertEqual(response.status_code, 200)
-        
+        form = lxml.html.document_fromstring(response.content).forms[1] #First one is search
+        response = self.client.post(reverse('snippify_create'), {
+            'csrfmiddlewaretoken': form.fields['csrfmiddlewaretoken'],
+            'title': 'Snippet 3',
+            'description': 'Snippet 3 4',
+            'body': """#!/usr/bin/python
+x=3
+""",
+            'status': 'published',
+            'privacy': 'public',
+            'tags': 'text'
+        })
+        self.assertEqual(response.status_code, 302)
+        snippet = Snippet.objects.get(title="Snippet 3")
+        self.assertEqual('Snippet 3 (python)', str(snippet)) #Pygments guessed the correct lexer
+
+        #Update
+        response = self.client.get(reverse('snippify_update', None, [snippet.id]))
+        self.assertEqual(response.status_code, 200)
+        form = lxml.html.document_fromstring(response.content).forms[1]
+
     def test_comment_snippet(self):
         """ Comment on a specific snippet """
 

@@ -45,8 +45,8 @@ setup(
     package_data={'django_snippify': package_data_dirs},
     requires=[
         'django (>=1.2)',
+        'django-haystack',
         'django-piston',
-        'django-whoosh',
         'django-tagging',
         'pygments',
     ],

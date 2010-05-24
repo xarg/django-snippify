@@ -2,9 +2,9 @@
 <html>
 <head>
 	<meta charset="utf-8" />
-	<title>{% block title%}!!!Change the title!!!{% endblock%}{% if home_page %}Code Snippets{% endif %}{% if home_page %} |{% endif %} snippify</title>
+	<title>{% block title%}!!!Change the title!!!{% endblock%}{% if home_page %}Code Snippets{% endif %}{% if home_page %} |{% endif %} Snippify</title>
 	<link rel="shortcut icon" href="{{MEDIA_URL}}images/favico.ico" />
-	<link rel="search" type="application/opensearchdescription+xml" title="Snippify.me" href="{% url snippify_search_plugin %}" />
+	<link rel="search" type="application/opensearchdescription+xml" title="snippify" href="{% url snippify_search_plugin %}" />
 	<link rel="stylesheet" type="text/css" media="all" charset="utf-8" href="{{MEDIA_URL}}css/snippify_base.css"/>
 	<!--[if lt IE 9]>
 	<style>article, aside, dialog, figure, footer, header, hgroup, menu, nav, section { display: block; }</style>
@@ -19,11 +19,11 @@
 	<div class="menubar clearfix">
 		<nav id="primary-navigation">
 			{% if user.is_authenticated %}
-			<li><a class="first" href="/accounts/profile">{{user.username}}</a></li>
+			<li><a class="first" href="{% url snippify_accounts_profile %}">{{user.username}}</a></li>
 			<li><a href="{% url snippify_create %}">Add a snippet</a></li>
-			<li><a href="/account/signout">Logout</a></li>
+			<li><a href="{% url snippify_accounts_logout %}">Logout</a></li>
 			{% else %}
-				<li class="first" id="login"><a href="/account/signin">Login / Register</a></li>
+				<li class="first" id="login"><a href="{% url snippify_accounts_login %}">Login / Register</a></li>
 			{% endif %}
 		</nav>
 		<div id="search-form">
@@ -50,7 +50,7 @@
 		<li><a href="/plugins/">Plugins</a></li>
 		<li><a href="/tags/">Tags</a></li>
 		<li><a href="/legal/">Legal</a></li>
-		<li><span>{% now "Y" %} Code Snippets | Snippify.me</span></li>
+		<li><span><time>{% now "Y" %}</time> Code Snippets | Snippify.me</span></li>
 	</nav>
 </footer>
 <script> var MEDIA_URL = '{{MEDIA_URL}}';</script>

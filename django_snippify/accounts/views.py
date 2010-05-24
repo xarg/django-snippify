@@ -2,16 +2,18 @@ import time
 import random
 import hashlib
 
-from django.conf import settings
-from django.core.paginator import Paginator, InvalidPage, EmptyPage
 from django.contrib.auth.models import User
-from django.contrib.auth.decorators import login_required # User to verify if user is authenticated
+from django.contrib.auth.decorators import login_required
+from django.core.paginator import Paginator, InvalidPage, EmptyPage
+from django.core.urlresolvers import reverse
 from django.shortcuts import get_object_or_404, render_to_response
 from django.template.loader import render_to_string
 from django.http import HttpResponseRedirect, Http404
 
 from django_snippify.models import Snippet
-from django_snippify.models import UserProfile, UserFollow
+from django_snippify.utils import build_context
+
+from models import UserProfile, UserFollow
 from django_emailqueue.models import EmailQueue
 from tagging.models import Tag
 
@@ -250,3 +252,15 @@ def unsubscribe(request):
         except:
             request.session['flash'] = ['The key is not correct. Contact the administrator.', 'error'];
     return HttpResponseRedirect('/')
+
+from django.contrib import auth
+from django.http import HttpResponse, HttpResponseRedirect
+
+def login(request):
+    if request.method == 'POST':
+        pass
+    else:
+        return render_to_response('accounts/login.html', context_instance=build_context(request))
+def logout(request):
+    auth.logout(request)
+    return HttpResponseRedirect(request.GET.get('next', reverse('snippify_index')))
